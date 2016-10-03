@@ -1,5 +1,14 @@
 /**
  * chess_main.c
+ * 
+ * ＜関数一覧＞
+ * print_board（盤面出力）
+ * input（入力）
+ * move_check（駒の移動が正しいかチェック）
+ * move_chess（駒の移動）
+ * pawn_up（ポーンの昇進）
+ * help
+ * main
  */
 
 #include "chess.h"
@@ -136,11 +145,70 @@ int move_check(void)
 	switch (before) {
 		/* ポーン 一つ進む（始め二つ進む） */
 		case 'P':
+			/* player1 */
+			if(flag_turn == 1) {
+				/* 一つ前に敵がいる場合は進めない */
+				if(input_int[1] == input_int[3] && input_int[2] == (input_int[0] - 1)) {
+					if( after == 'p' ||
+						after == 'k' ||
+						after == 'q' ||
+						after == 'b' ||
+						after == 'n' ||
+						after == 'r'   ) {
+						printf(" 目の前に相手がいます\n");
+						return 2;	/* 例外終了 */
+						}
+				}
+				/* 一つ斜め前に敵がいる場合は取れる */
+				if((input_int[2] == (input_int[0] - 1) && input_int[3] == (input_int[1] - 1)) ||
+				   (input_int[2] == (input_int[0] - 1) && input_int[3] == (input_int[1] + 1))) {
+					if( after == 'p' ||
+						after == 'k' ||
+						after == 'q' ||
+						after == 'b' ||
+						after == 'n' ||
+						after == 'r'   ) {
+						return 0;	/* 正常終了 */
+						}
+					printf(" ポーンの移動（斜め）が不正です\n");
+					return 2;	/* 例外終了 */
+				}
+			}
+			/* player2 */
+			else if(flag_turn == 2) {
+				/* 一つ前に敵がいる場合は進めない */
+				if(input_int[1] == input_int[3] && input_int[2] == (input_int[0] + 1)) {
+					if( after == 'P' ||
+						after == 'K' ||
+						after == 'Q' ||
+						after == 'B' ||
+						after == 'N' ||
+						after == 'R'   ) {
+						printf(" 目の前に相手がいます\n");
+						return 2;	/* 例外終了 */
+						}
+				}
+				/* 一つ斜め前に敵がいる場合は取れる */
+				if((input_int[2] == (input_int[0] + 1) && input_int[3] == (input_int[1] - 1)) ||
+				   (input_int[2] == (input_int[0] + 1) && input_int[3] == (input_int[1] + 1))) {
+					if( after == 'P' ||
+						after == 'K' ||
+						after == 'Q' ||
+						after == 'B' ||
+						after == 'N' ||
+						after == 'R'   ) {
+						return 0;	/* 正常終了 */
+						}
+					printf(" ポーンの移動（斜め）が不正です\n");
+					return 2;	/* 例外終了 */
+				}
+			}
 			/* 列が等しくない場合 */
 			if(input_int[1] != input_int[3]) {
 				printf(" 列の入力が不正です\n");
 				return 2;	/* 例外終了 */
 			}
+			/* 1ターン目 */
 			if(flag_turn == 1) {
 				if(turn_p1 == 1 && (input_int[2] == (input_int[0] - 2))) {
 					return 0;	/* 正常終了 */
@@ -451,7 +519,7 @@ int move_check(void)
 /* 駒移動 */
 int move_chess(void)
 {	
-	/* 大文字に変えていた駒を小文字に戻す */
+	/* (player2のとき)大文字に変えていた駒を小文字に戻す */
 	if(flag_turn == 2) {
 		switch(before) {
 			case 'P':
@@ -491,6 +559,69 @@ int move_chess(void)
 	}
 	
 	return 0;
+}
+
+/* ポーンの昇進 */
+void pawn_up(void)
+{
+	int val;
+	char Char;
+	
+	if(flag_turn == 1 && before == 'P' && input_int[2] == 0) {
+		printf( " ポーンが昇進できます(player1)\n"
+				" 1:クイーン\n"
+				" 2:ビショップ\n"
+				" 3:ナイト\n"
+				" 4:ルーク\n"
+				" それ以外:そのまま\n"
+				" 入力 : ");
+		scanf( " %d", &val);
+		
+		switch(val) {
+			case 1:
+				Char = 'Q';
+				break;
+			case 2:
+				Char = 'B';
+				break;
+			case 3:
+				Char = 'N';
+				break;
+			case 4:
+				Char = 'R';
+				break;
+			default:
+				break;
+		}
+		board[input_int[2]][input_int[3]] = Char;
+	} else if(flag_turn == 2 && before == 'p' && input_int[2] == 7) {
+		printf( " ポーンが昇進できます(player2)\n"
+				" 1:クイーン\n"
+				" 2:ビショップ\n"
+				" 3:ナイト\n"
+				" 4:ルーク\n"
+				" それ以外:そのまま\n"
+				" 入力 : ");
+		scanf( " %d", &val);
+		
+		switch(val) {
+			case 1:
+				Char = 'q';
+				break;
+			case 2:
+				Char = 'b';
+				break;
+			case 3:
+				Char = 'n';
+				break;
+			case 4:
+				Char = 'r';
+				break;
+			default:
+				break;
+		}
+		board[input_int[2]][input_int[3]] = Char;
+	}
 }
 
 /* ヘルプ */
@@ -549,6 +680,8 @@ int main(void)
 		if(flag == 0) {
 			/* 駒移動 */
 			flag = move_chess();
+			/* ポーンの昇進 */
+			pawn_up();
 			/* ターン数経過 */
 			if(flag_turn == 1) {
 				turn_p1++;
