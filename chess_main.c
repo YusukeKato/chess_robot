@@ -7,6 +7,8 @@
  * move_check（駒の移動が正しいかチェック）
  * move_chess（駒の移動）
  * pawn_up（ポーンの昇進）
+ * state_check(駒の移動状態を記録)
+ * castling(キャッスリング)
  * help
  * main
  */
@@ -17,6 +19,8 @@
 void print_board(void)
 {
 	int i, j;
+	
+	printf( " ヘルプは'h'を入力してください\n");
 	
 	/* 盤面出力 */
 	for(i = 0; i < RANK; i++) {
@@ -31,6 +35,7 @@ void print_board(void)
 int input(void)
 {
 	int i;
+	int castling_val;/* キャッスリング判定 */
 	
 	/* 駒の移動を指定する文字列入力 */
 	if(flag_turn == 1) {
@@ -61,6 +66,12 @@ int input(void)
 	/* 指定した駒を書きやすいように簡単な変数に代入 */
 	before = board[input_int[0]][input_int[1]];	/* 移動前の駒 */
 	after = board[input_int[2]][input_int[3]];	/* 移動後の駒 */
+	
+	/* キャッスリング判定 */
+	castling_val = castling();
+	if(castling_val != 0) {
+		return castling_val;
+	}
 	
 	if(flag_turn == 1) {
 		/* 駒以外を指定したら無効 */
@@ -208,18 +219,18 @@ int move_check(void)
 				printf(" 列の入力が不正です\n");
 				return 2;	/* 例外終了 */
 			}
-			/* 1ターン目 */
+			/* 初回は2マス動ける */
 			if(flag_turn == 1) {
-				if(turn_p1 == 1 && (input_int[2] == (input_int[0] - 2))) {
+				if(man_state_p1[input_int[1]] == 0 && (input_int[2] == (input_int[0] - 2))) {
 					return 0;	/* 正常終了 */
-				} else if(input_int[2] != (input_int[0] - 1)) {
+				} else if(input_int[2] != (input_int[0] - 1)) {//1マス進むじゃないときは無効
 					printf(" 行の入力が不正です\n");
 					return 2;	/* 例外終了 */
 				}
 			} else if(flag_turn == 2) {
-				if(turn_p2 == 1 && (input_int[2] == (input_int[0] + 2))) {
+				if(man_state_p2[input_int[1]] == 0 && (input_int[2] == (input_int[0] + 2))) {
 					return 0;	/* 正常終了 */
-				} else if(input_int[2] != (input_int[0] + 1)) {
+				} else if(input_int[2] != (input_int[0] + 1)) {//1マス進むじゃないときは無効
 					printf(" 行の入力が不正です\n");
 					return 2;	/* 例外終了 */
 				}
@@ -573,7 +584,7 @@ void pawn_up(void)
 				" 2:ビショップ\n"
 				" 3:ナイト\n"
 				" 4:ルーク\n"
-				" それ以外:そのまま\n"
+				" それ以外:クイーン\n"
 				" 入力 : ");
 		scanf( " %d", &val);
 		
@@ -591,6 +602,7 @@ void pawn_up(void)
 				Char = 'R';
 				break;
 			default:
+				Char = 'Q';
 				break;
 		}
 		board[input_int[2]][input_int[3]] = Char;
@@ -624,6 +636,147 @@ void pawn_up(void)
 	}
 }
 
+/* 駒の状態を記録 */
+void state_check(void)
+{
+	//0 -> 一度も動いていない
+	//1 -> 一度は動いた
+	//2 -> 取られた
+	//ポーンの初回2マス動くため
+	//キャッスリングのため
+	
+	switch(before) {
+		case 'P':
+			man_state_p1[input_int[1]] = 1;
+			break;
+		case 'K':
+			man_state_p1[12] = 1;//キング12
+			break;
+		case 'R':
+			if(input_int[1] == 0) {
+				man_state_p1[8] = 1;//ルーク左8
+			} else if(input_int[1] == 7) {
+				man_state_p1[15] = 1;//ルーク右15
+			} else {
+			}
+			break;
+		//配列番号はp2もp1と同じ
+		case 'p':
+			man_state_p2[input_int[1]] = 1;
+			break;
+		case 'k':
+			man_state_p2[12] = 1;
+			break;
+		case 'r':
+			if(input_int[1] == 0) {
+				man_state_p2[8] = 1;
+			} else if(input_int[1] == 7) {
+				man_state_p2[15] = 1;
+			}
+			break;
+		default:
+			break;
+	}
+}
+
+/* キャッスリング */
+int castling(void)
+{
+	if(flag_turn == 1 && before == 'K' && after == 'R') {
+		if(man_state_p1[KING] == 0) {
+			if(input_int[3] == 0 && man_state_p1[L_ROOK] == 0) {//ルーク左
+				if(board[7][1] != '*') {
+					printf(" キングとルークの間に駒があります（左）\n");
+					return 2;	/* 例外終了 */
+				}
+				if(board[7][2] != '*') {
+					printf(" キングとルークの間に駒があります（左）\n");
+					return 2;	/* 例外終了 */
+				}
+				if(board[7][3] != '*') {
+					printf(" キングとルークの間に駒があります（左）\n");
+					return 2;	/* 例外終了 */
+				}
+				/* 駒移動 */
+				board[7][4] = '*';
+				board[7][0] = '*';
+				board[7][2] = 'K';
+				board[7][2] = 'R';
+				man_state_p1[KING] = 1;
+				man_state_p1[L_ROOK] = 1;
+				printf(" \n キャッスリング！！\n\n");
+				return 4;	/* 特殊終了 */
+			} else if(input_int[3] == 7 && man_state_p1[R_ROOK] == 0) {//ルーク右
+				if(board[7][5] != '*') {
+					printf(" キングとルークの間に駒があります（右）\n");
+					return 2;	/* 例外終了 */
+				}
+				if(board[7][6] != '*') {
+					printf(" キングとルークの間に駒があります（右）\n");
+					return 2;	/* 例外終了 */
+				}
+				/* 駒移動 */
+				board[7][4] = '*';
+				board[7][7] = '*';
+				board[7][6] = 'K';
+				board[7][5] = 'R';
+				man_state_p1[KING] = 1;
+				man_state_p1[R_ROOK] = 1;
+				printf(" \n キャッスリング！！\n\n");
+				return 4;	/* 特殊終了 */
+			} else {
+			}
+		}
+	} else if(flag_turn == 2 && before == 'k' && after == 'r') {
+		if(man_state_p2[KING] == 0) {
+			if(input_int[3] == 0 && man_state_p2[L_ROOK] == 0) {//ルーク左
+				if(board[0][1] != '*') {
+					printf(" キングとルークの間に駒があります（左）\n");
+					return 2;	/* 例外終了 */
+				}
+				if(board[0][2] != '*') {
+					printf(" キングとルークの間に駒があります（左）\n");
+					return 2;	/* 例外終了 */
+				}
+				if(board[0][3] != '*') {
+					printf(" キングとルークの間に駒があります（左）\n");
+					return 2;	/* 例外終了 */
+				}
+				/* 駒移動 */
+				board[0][4] = '*';
+				board[0][0] = '*';
+				board[0][2] = 'k';
+				board[0][3] = 'r';
+				man_state_p2[KING] = 1;
+				man_state_p2[L_ROOK] = 1;
+				printf(" \n キャッスリング！！\n\n");
+				return 4;	/* 特殊終了 */
+			} else if(input_int[3] == 7 && man_state_p2[R_ROOK] == 0) {//ルーク右
+				if(board[0][5] != '*') {
+					printf(" キングとルークの間に駒があります（右）\n");
+					return 2;	/* 例外終了 */
+				}
+				if(board[0][6] != '*') {
+					printf(" キングとルークの間に駒があります（右）\n");
+					return 2;	/* 例外終了 */
+				}
+				/* 駒移動 */
+				board[0][4] = '*';
+				board[0][7] = '*';
+				board[0][6] = 'k';
+				board[0][5] = 'r';
+				man_state_p2[KING] = 1;
+				man_state_p2[R_ROOK] = 1;
+				printf(" \n キャッスリング！！\n\n");
+				return 4;	/* 特殊終了 */
+			} else {
+			}
+		}
+	} else {
+	}
+	return 0;
+}
+
 /* ヘルプ */
 void help(void)
 {
@@ -632,7 +785,8 @@ void help(void)
 			"動かしたい場所の行と列を\n"
 			"同時に指定してください\n"
 			"（例）6454\n"
-			" 64のポーンを54へ動かす\n"
+			" 64のポーンを54へ動かす\n\n"
+			" キャッスリングはキングとルークを指定してください\n"
 			"==============================\n\n");
 }
 
@@ -647,8 +801,7 @@ int main(void)
 	//flag = 3 ヘルプ
 	
 	/* 開始コメント */
-	printf( " 開始します\n"
-			" 'h':ヘルプ\n");
+	printf( " 開始します\n");
 	
 	/* 'q'を押すか、対局終了までループ */
 	for(;flag != 1;) {
@@ -677,11 +830,15 @@ int main(void)
 		}
 		
 		/* 駒の指定が不正だったらスルー */
-		if(flag == 0) {
-			/* 駒移動 */
-			flag = move_chess();
-			/* ポーンの昇進 */
-			pawn_up();
+		if(flag == 0 || flag == 4) {
+			if(flag == 0) {
+				/* 駒移動 */
+				flag = move_chess();
+				/* ポーンの昇進 */
+				pawn_up();
+				/* 駒の状態の確認 */
+				state_check();
+			}
 			/* ターン数経過 */
 			if(flag_turn == 1) {
 				turn_p1++;
